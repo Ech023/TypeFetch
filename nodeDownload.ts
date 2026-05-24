@@ -104,6 +104,7 @@ async function downloadFile(url: string, destFilePath: string, options: Download
 					let lastTime = Date.now();
 					let lastLoaded = downloadedBytes;
 					const REPORT_INTERVAL = 250;
+					let lastTimeoutResetTime = Date.now();
 					fileStream = createWriteStream(tmpFilePath, { flags: downloadedBytes > 0 ? "a" : "w" });
 					const emitProgress = () => {
 						if (!onProgress) return;
@@ -118,7 +119,11 @@ async function downloadFile(url: string, destFilePath: string, options: Download
 					};
 					res.on("data", (chunk: Buffer) => {
 						currentProgress += chunk.length;
-						req?.setTimeout(finalTimeout);
+						const now = Date.now();
+						if (now - lastTimeoutResetTime >= 1000) {
+							req?.setTimeout(finalTimeout);
+							lastTimeoutResetTime = now;
+						}
 					});
 					progressTimer = setInterval(emitProgress, REPORT_INTERVAL);
 					pipeline(res, fileStream)
